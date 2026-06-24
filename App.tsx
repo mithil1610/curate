@@ -9,6 +9,9 @@ import SearchScreen from './src/screens/SearchScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import RestaurantProfileScreen from './src/screens/RestaurantProfileScreen';
 
+import MenuChatScreen from './src/screens/MenuChatScreen';
+import { ProcessedMenu } from './src/services/menuService';
+
 export type RootTabParamList = {
   Home: undefined;
   Search: undefined;
@@ -27,6 +30,10 @@ export type HomeStackParamList = {
     tags: string[];
     imageUrl: string;
   };
+  MenuChat: {
+    menu: ProcessedMenu;
+    restaurantName: string;
+  };
 };
 
 function HomeStackScreen() {
@@ -34,6 +41,7 @@ function HomeStackScreen() {
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeFeed" component={HomeScreen} />
       <HomeStack.Screen name="RestaurantProfile" component={RestaurantProfileScreen} />
+      <HomeStack.Screen name="MenuChat" component={MenuChatScreen} />
     </HomeStack.Navigator>
   );
 }

@@ -151,3 +151,62 @@ function getFallbackMenu(): ProcessedMenu {
     processedAt: new Date().toISOString()
   }
 }
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;
+}
+
+export async function chatWithMenuConcierge(
+  restaurantName: string,
+  menu: ProcessedMenu,
+  history: ChatMessage[],
+  newQuery: string
+): Promise<string> {
+  if (!ai) {
+    return "I'm currently operating offline and cannot answer chat queries at the moment. Please check the AI summary on the profile page.";
+  }
+
+  const systemInstruction = `
+You are 'Curate', a sophisticated, polite, and helpful culinary concierge.
+You are currently assisting a user with the menu for ${restaurantName}.
+Here is the structured menu data you must use as your sole source of truth for menu items:
+${JSON.stringify(menu, null, 2)}
+
+Rules:
+1. Only recommend or discuss items that are explicitly listed in the menu data above.
+2. If the user asks about an item not on the menu, politely inform them it isn't available and suggest an alternative from the menu.
+3. Keep your answers concise, conversational, and native to a high-end mobile app experience. Do not use markdown blocks unless formatting a list.
+`;
+
+  // Format history for Gemini API
+  const contents = history.map(msg => ({
+    role: msg.role,
+    parts: [{ text: msg.text }]
+  }));
+
+  // Add the new query
+  contents.push({
+    role: 'user',
+    parts: [{ text: newQuery }]
+  });
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: contents,
+      config: {
+        systemInstruction: systemInstruction,
+      }
+    });
+
+    if (response.text) {
+      return response.text;
+    } else {
+      return "I apologize, but I couldn't formulate a response right now.";
+    }
+  } catch (error) {
+    console.error("Chat error:", error);
+    return "I encountered an issue processing your request. Please try again.";
+  }
+}

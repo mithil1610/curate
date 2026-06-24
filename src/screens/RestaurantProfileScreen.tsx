@@ -86,6 +86,14 @@ export default function RestaurantProfileScreen({ route, navigation }: any) {
                     {aiMenu.categories.Meat.map((item, i) => <Text key={i} style={styles.categoryItem}>• {item}</Text>)}
                   </View>
                 )}
+
+                <TouchableOpacity 
+                  style={styles.chatButton}
+                  onPress={() => navigation.navigate('MenuChat', { menu: aiMenu, restaurantName: name })}
+                >
+                  <Text style={styles.chatButtonText}>Ask Curate</Text>
+                  <Ionicons name="chatbubbles" size={16} color="#1a1a1a" />
+                </TouchableOpacity>
               </View>
             ) : (
               <Text style={styles.chatSubtitle}>
