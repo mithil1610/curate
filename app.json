@@ -1,11 +1,20 @@
 {
   "expo": {
-    "name": "curate",
+    "name": "Curate",
+    "description": "Dine by design. Your intelligent culinary concierge.",
     "slug": "curate",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Curate to use your location to find the best restaurants near you."
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true
     },
