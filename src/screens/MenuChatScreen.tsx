@@ -12,6 +12,15 @@ export default function MenuChatScreen({ route, navigation }: any) {
   const { items: cartItems, addToCart } = useCart();
   const { isGroupModeActive, combinedProfile } = useGroup();
 
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3000);
+  };
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'model',
@@ -71,22 +80,33 @@ export default function MenuChatScreen({ route, navigation }: any) {
     const isUser = item.role === 'user';
     
     if (item.isOrderCard) {
-      const orderSummarySnippet = "Awesome! I've prepared your order:\n" + cartItems.map(cartItem => {
-        let line = `- ${cartItem.quantity}x ${cartItem.name}`;
+      const itemsString = cartItems.map((cartItem) => {
+        let text = cartItem.quantity > 1 ? `${cartItem.quantity}x ${cartItem.name}` : cartItem.name;
         const mods: string[] = [];
         if (cartItem.customization) {
           cartItem.customization.removable_ingredients.forEach(i => mods.push(`No ${i}`));
           cartItem.customization.protein_add_ons.forEach(i => mods.push(`Add ${i}`));
         }
         if (mods.length > 0) {
-          line += ` (${mods.join(', ')})`;
+          text += ` (${mods.join(', ')})`;
         }
-        return line;
-      }).join('\n');
+        return text;
+      });
+
+      let formattedItems = "";
+      if (itemsString.length === 1) {
+        formattedItems = itemsString[0];
+      } else if (itemsString.length === 2) {
+        formattedItems = `${itemsString[0]} and ${itemsString[1]}`;
+      } else if (itemsString.length > 2) {
+        formattedItems = itemsString.slice(0, -1).join(', ') + ` and ${itemsString[itemsString.length - 1]}`;
+      }
+
+      const orderSummarySnippet = `Awesome! I've prepared your order: ${formattedItems}.`;
 
       const handleCopy = async () => {
         await Clipboard.setStringAsync(orderSummarySnippet);
-        Alert.alert("Copied!", "Order details copied to clipboard.");
+        showToast("Order copied to clipboard!");
       };
 
       const handleDeepLink = async () => {
@@ -192,6 +212,12 @@ export default function MenuChatScreen({ route, navigation }: any) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {toastMessage && (
+        <View style={styles.toastContainer}>
+          <Text style={styles.toastText}>{toastMessage}</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -392,5 +418,24 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '700',
+  },
+  toastContainer: {
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  toastText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
