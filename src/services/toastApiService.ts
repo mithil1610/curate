@@ -48,15 +48,27 @@ export async function submitOrderToToast(
     restaurantGuid: restaurantId || 'mock-restaurant-guid',
     checks: [
       {
-        selections: items.map(item => ({
-          item: {
-            guid: item.id,
-            name: item.name
-          },
-          quantity: item.quantity,
-          price: item.price,
-          modifiers: globalModifiers.length > 0 ? globalModifiers : undefined
-        }))
+        selections: items.map(item => {
+          const itemModifiers = [...globalModifiers];
+          if (item.customization) {
+            item.customization.removable_ingredients.forEach(ingredient => {
+              itemModifiers.push({ name: `NO ${ingredient.toUpperCase()}` });
+            });
+            item.customization.protein_add_ons.forEach(protein => {
+              itemModifiers.push({ name: `ADD ${protein.toUpperCase()}` });
+            });
+          }
+
+          return {
+            item: {
+              guid: item.item_id,
+              name: item.name
+            },
+            quantity: item.quantity,
+            price: item.price,
+            modifiers: itemModifiers.length > 0 ? itemModifiers : undefined
+          };
+        })
       }
     ]
   };

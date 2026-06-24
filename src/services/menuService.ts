@@ -3,14 +3,41 @@ import { db } from './firebaseConfig';
 import { GoogleGenAI } from '@google/genai';
 import { getTasteProfile, TasteProfile } from './userService';
 
-export interface ProcessedMenu {
-  summary: string;
-  categories: {
-    Vegan: string[];
-    Vegetarian: string[];
-    Meat: string[];
+export interface MenuItem {
+  item_id: string;
+  name: string;
+  description: string;
+  price: number;
+  dietary_flags: {
+    is_vegetarian: boolean;
+    is_vegan: boolean;
+    is_gluten_free: boolean;
+    is_keto: boolean;
   };
-  processedAt: string;
+  known_allergens: string[];
+  flavor_profile: string[];
+  customization: {
+    removable_ingredients: string[];
+    protein_add_ons: string[];
+  };
+  ai_recommendation_notes: string;
+}
+
+export interface MenuCategory {
+  category_name: string;
+  items: MenuItem[];
+}
+
+export interface ProcessedMenu {
+  restaurant_id: string;
+  last_updated: string;
+  ai_cuisine_summary: string;
+  overall_dietary_rating: {
+    vegan_friendly_score: number;
+    vegetarian_friendly_score: number;
+    gluten_free_friendly_score: number;
+  };
+  menu_categories: MenuCategory[];
 }
 
 // In a real app we might not initialize immediately if key is missing,
@@ -42,7 +69,7 @@ export async function getOrFetchMenu(restaurantId: string, name: string, tags: s
     const rawMenu = generateMockRawMenu(name, tags);
 
     // 3. Process with Gemini
-    const processedMenu = await processMenuWithGemini(rawMenu);
+    const processedMenu = await processMenuWithGemini(restaurantId, rawMenu);
 
     // 4. Cache to Firestore
     if (processedMenu && process.env.EXPO_PUBLIC_GEMINI_API_KEY && process.env.EXPO_PUBLIC_GEMINI_API_KEY !== 'YOUR_GEMINI_API_KEY') {
@@ -61,24 +88,49 @@ export async function getOrFetchMenu(restaurantId: string, name: string, tags: s
   }
 }
 
-async function processMenuWithGemini(rawMenuText: string): Promise<ProcessedMenu | null> {
+async function processMenuWithGemini(restaurantId: string, rawMenuText: string): Promise<ProcessedMenu | null> {
   if (!ai) {
-    return getFallbackMenu();
+    return getFallbackMenu(restaurantId);
   }
 
   const prompt = `
   You are an expert culinary AI. Analyze the following raw restaurant menu.
-  Categorize the items into exactly three arrays: "Vegan", "Vegetarian", and "Meat".
-  Provide a 1-2 sentence "summary" of the overall cuisine and dining experience.
-  
-  Format the output exactly as valid JSON matching this schema:
+  Format the output exactly as valid JSON matching this strict schema:
   {
-    "summary": "String summary of the cuisine.",
-    "categories": {
-      "Vegan": ["item 1", "item 2"],
-      "Vegetarian": ["item 1", "item 2"],
-      "Meat": ["item 1", "item 2"]
-    }
+    "restaurant_id": "${restaurantId}",
+    "last_updated": "${new Date().toISOString()}",
+    "ai_cuisine_summary": "String summary of the overall cuisine and dining experience.",
+    "overall_dietary_rating": {
+      "vegan_friendly_score": 0-10,
+      "vegetarian_friendly_score": 0-10,
+      "gluten_free_friendly_score": 0-10
+    },
+    "menu_categories": [
+      {
+        "category_name": "Category Name",
+        "items": [
+          {
+            "item_id": "toast_item_xxxx", // Generate a mock ID
+            "name": "Item Name",
+            "description": "Item Description",
+            "price": 10.00, // Numeric price
+            "dietary_flags": {
+              "is_vegetarian": true/false,
+              "is_vegan": true/false,
+              "is_gluten_free": true/false,
+              "is_keto": true/false
+            },
+            "known_allergens": ["allergen1", "allergen2"],
+            "flavor_profile": ["flavor1", "flavor2"],
+            "customization": {
+              "removable_ingredients": ["ingredient1", "ingredient2"],
+              "protein_add_ons": ["protein1", "protein2"]
+            },
+            "ai_recommendation_notes": "A brief note on why to recommend this."
+          }
+        ]
+      }
+    ]
   }
   
   Do not include markdown blocks like \`\`\`json. Return only the raw JSON.
@@ -100,16 +152,8 @@ async function processMenuWithGemini(rawMenuText: string): Promise<ProcessedMenu
     if (cleanedText.startsWith('\`\`\`')) cleanedText = cleanedText.substring(3);
     if (cleanedText.endsWith('\`\`\`')) cleanedText = cleanedText.substring(0, cleanedText.length - 3);
     
-    const parsed = JSON.parse(cleanedText);
-    return {
-      summary: parsed.summary,
-      categories: {
-        Vegan: parsed.categories?.Vegan || [],
-        Vegetarian: parsed.categories?.Vegetarian || [],
-        Meat: parsed.categories?.Meat || [],
-      },
-      processedAt: new Date().toISOString()
-    };
+    const parsed = JSON.parse(cleanedText) as ProcessedMenu;
+    return parsed;
   } catch (e) {
     console.error("Gemini processing error:", e);
     return null;
@@ -117,40 +161,67 @@ async function processMenuWithGemini(rawMenuText: string): Promise<ProcessedMenu
 }
 
 function generateMockRawMenu(name: string, tags: string[]): string {
+  // We'll generate a more detailed raw text menu to allow the AI to extract prices, allergens, and dietary flags
+  const isVegan = tags.includes('Vegan') || tags.includes('Vegan Options');
+  const isSpicy = tags.includes('Thai') || tags.includes('Indian') || tags.includes('Mexican');
+
   return `
-    RESTAURANT: ${name}
-    CUISINE: ${tags.join(', ')}
-    
-    STARTERS
-    Mixed Greens w/ Vinaigrette - $12
-    Crispy Calamari w/ Garlic Aioli - $16
-    Beef Tartare - $22
-    Roasted Beet Salad (No Cheese) - $14
-    
-    MAINS
-    Wild Caught Salmon w/ Asparagus - $32
-    Truffle Mushroom Risotto - $28
-    Prime Ribeye Steak 16oz - $55
-    Beyond Burger w/ Vegan Bun - $20
-    Eggplant Parmesan - $24
-    
-    DESSERTS
-    Chocolate Lava Cake - $12
-    Vegan Coconut Sorbet - $10
-    Tiramisu - $14
+    ${name} - Official Menu
+
+    STARTERS:
+    - Edamame ($6.00): Steamed soybeans with sea salt. (Vegan, Gluten-Free) [Contains: Soy]
+    - Spring Rolls ($8.50): Crispy rolls stuffed with cabbage, carrots, and glass noodles. Served with sweet chili sauce. (Vegetarian)
+    ${isSpicy ? '- Spicy Papaya Salad ($10.00): Green papaya, cherry tomatoes, peanuts, and chili-lime dressing. (Vegetarian, Gluten-Free) [Contains: Peanuts]' : ''}
+
+    MAINS:
+    - Signature Bowl ($14.00): Quinoa, roasted sweet potatoes, kale, and tahini dressing. (Vegan, Gluten-Free)
+    - Classic Burger ($16.50): 8oz beef patty with lettuce, tomato, and house sauce on a brioche bun. Served with fries. [Contains: Gluten, Dairy]
+    ${isVegan ? '- Plant-Based Curry ($15.00): Mixed vegetables in a coconut curry sauce. (Vegan, Gluten-Free) [Contains: Coconut]' : ''}
+    - Grilled Chicken Salad ($13.00): Mixed greens, grilled chicken breast, croutons, and parmesan. (Keto Options) [Contains: Dairy, Gluten]
+
+    DESSERTS:
+    - Chocolate Lava Cake ($9.00): Warm chocolate cake with a gooey center. [Contains: Gluten, Dairy, Eggs]
+    - Mango Sticky Rice ($8.00): Sweet glutinous rice with fresh mango and coconut milk. (Vegan, Gluten-Free)
   `;
 }
 
-function getFallbackMenu(): ProcessedMenu {
+function getFallbackMenu(restaurantId: string): ProcessedMenu {
   return {
-    summary: "An excellent dining establishment featuring a variety of high-quality dishes (Mock AI Summary).",
-    categories: {
-      Vegan: ["Mixed Greens w/ Vinaigrette", "Roasted Beet Salad", "Beyond Burger", "Vegan Coconut Sorbet"],
-      Vegetarian: ["Truffle Mushroom Risotto", "Eggplant Parmesan", "Chocolate Lava Cake", "Tiramisu"],
-      Meat: ["Crispy Calamari", "Beef Tartare", "Wild Caught Salmon", "Prime Ribeye Steak"]
+    restaurant_id: restaurantId,
+    last_updated: new Date().toISOString(),
+    ai_cuisine_summary: "A generic menu fallback since AI processing is unavailable.",
+    overall_dietary_rating: {
+      vegan_friendly_score: 5,
+      vegetarian_friendly_score: 5,
+      gluten_free_friendly_score: 5
     },
-    processedAt: new Date().toISOString()
-  }
+    menu_categories: [
+      {
+        category_name: "General Items",
+        items: [
+          {
+            item_id: "toast_item_fallback_1",
+            name: "House Salad",
+            description: "Fresh mixed greens with a light vinaigrette.",
+            price: 8.00,
+            dietary_flags: {
+              is_vegetarian: true,
+              is_vegan: true,
+              is_gluten_free: true,
+              is_keto: true
+            },
+            known_allergens: [],
+            flavor_profile: ["fresh", "light"],
+            customization: {
+              removable_ingredients: ["dressing"],
+              protein_add_ons: ["chicken", "tofu"]
+            },
+            ai_recommendation_notes: "A safe and healthy fallback option."
+          }
+        ]
+      }
+    ]
+  };
 }
 
 export interface ChatMessage {

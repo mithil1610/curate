@@ -1,11 +1,15 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export interface CartItem {
-  id: string;
+  item_id: string;
   name: string;
   price: number;
   quantity: number;
   restaurantId: string;
+  customization?: {
+    removable_ingredients: string[];
+    protein_add_ons: string[];
+  };
 }
 
 interface CartContextType {
@@ -29,7 +33,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
          return [newItem];
       }
 
-      const existingIndex = currentItems.findIndex(i => i.name === newItem.name);
+      const existingIndex = currentItems.findIndex(i => i.item_id === newItem.item_id);
       if (existingIndex > -1) {
         const updated = [...currentItems];
         updated[existingIndex].quantity += newItem.quantity;
@@ -40,7 +44,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const removeFromCart = (itemId: string) => {
-    setItems(current => current.filter(i => i.id !== itemId));
+    setItems(current => current.filter(i => i.item_id !== itemId));
   };
 
   const clearCart = () => setItems([]);

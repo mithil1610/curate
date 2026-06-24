@@ -49,7 +49,7 @@ export default function MenuChatScreen({ route, navigation }: any) {
       
       // Look up price from menu or default
       addToCart({
-        id: Math.random().toString(),
+        item_id: Math.random().toString(),
         name: itemName,
         price: 15.00, // Mock default
         quantity: quantity,

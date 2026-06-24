@@ -6,7 +6,7 @@ import { useCart } from '../context/CartContext';
 import { submitOrderToToast } from '../services/toastApiService';
 
 export default function CheckoutScreen({ navigation }: any) {
-  const { items, totalPrice, clearCart, restaurantId } = useCart();
+  const { items, totalPrice, clearCart, restaurantId, removeFromCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
 
   const tax = totalPrice * 0.08;
@@ -44,10 +44,15 @@ export default function CheckoutScreen({ navigation }: any) {
       <ScrollView style={styles.content}>
         <Text style={styles.sectionTitle}>Your Order</Text>
         {items.map(item => (
-          <View key={item.id} style={styles.itemRow}>
-            <Text style={styles.itemQuantity}>{item.quantity}x</Text>
-            <Text style={styles.itemName}>{item.name}</Text>
-            <Text style={styles.itemPrice}>${(item.price * item.quantity).toFixed(2)}</Text>
+          <View key={item.item_id} style={styles.itemContainer}>
+            <View style={styles.itemRow}>
+              <Text style={styles.itemQuantity}>{item.quantity}x</Text>
+              <Text style={styles.itemName}>{item.name}</Text>
+              <Text style={styles.itemPrice}>${(item.price * item.quantity).toFixed(2)}</Text>
+            </View>
+            <TouchableOpacity onPress={() => removeFromCart(item.item_id)} style={styles.removeBtn}>
+              <Ionicons name="trash-outline" size={20} color="#ef4444" />
+            </TouchableOpacity>
           </View>
         ))}
 
@@ -103,6 +108,8 @@ const styles = StyleSheet.create({
   content: { padding: 24 },
   sectionTitle: { fontSize: 20, fontWeight: '700', marginBottom: 16 },
   itemRow: { flexDirection: 'row', marginBottom: 12 },
+  itemContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  removeBtn: { padding: 8 },
   itemQuantity: { width: 30, fontWeight: '600', color: '#666' },
   itemName: { flex: 1, fontSize: 16 },
   itemPrice: { fontSize: 16, fontWeight: '600' },

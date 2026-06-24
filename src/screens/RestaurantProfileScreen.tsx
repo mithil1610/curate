@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { getOrFetchMenu, ProcessedMenu } from '../services/menuService';
+import { getOrFetchMenu, ProcessedMenu, MenuItem } from '../services/menuService';
 import { useCart } from '../context/CartContext';
 import { useGroup } from '../context/GroupContext';
 
@@ -20,27 +20,31 @@ export default function RestaurantProfileScreen({ route, navigation }: any) {
       setAiMenu(menu);
       setLoadingAi(false);
     })();
-  }, [id, name, tags]);
+  }, [id]);
 
-  const handleAddToCart = (itemString: string) => {
-    // Attempt to extract price if it exists in the string (e.g. "Burger - $15")
-    const priceMatch = itemString.match(/\$(\d+(\.\d{1,2})?)/);
-    const price = priceMatch ? parseFloat(priceMatch[1]) : 15.00; // Default $15
-    // Clean name
-    const cleanName = itemString.split('- $')[0].trim().replace(/^•\s*/, '');
-
+  const handleAddToCart = (item: MenuItem) => {
     addToCart({
-      id: Math.random().toString(),
-      name: cleanName,
-      price: price,
+      item_id: item.item_id,
+      name: item.name,
+      price: item.price,
       quantity: 1,
       restaurantId: id,
+      customization: item.customization,
     });
   };
 
-  const renderMenuItem = (item: string, i: number) => (
-    <View key={i} style={styles.menuItemRow}>
-      <Text style={styles.categoryItem}>• {item}</Text>
+  const renderMenuItem = (item: MenuItem, i: number) => (
+    <View key={item.item_id || i} style={styles.menuItemRow}>
+      <View style={{ flex: 1, paddingRight: 16 }}>
+        <Text style={styles.menuItemName}>{item.name} - ${item.price.toFixed(2)}</Text>
+        <Text style={styles.menuItemDescription}>{item.description}</Text>
+        <View style={styles.badgeContainer}>
+          {item.dietary_flags.is_vegan && <Text style={styles.badge}>Vegan</Text>}
+          {item.dietary_flags.is_vegetarian && <Text style={styles.badge}>Veg</Text>}
+          {item.dietary_flags.is_gluten_free && <Text style={styles.badge}>GF</Text>}
+          {item.known_allergens.length > 0 && <Text style={styles.allergenBadge}>Contains: {item.known_allergens.join(', ')}</Text>}
+        </View>
+      </View>
       <TouchableOpacity style={styles.addButton} onPress={() => handleAddToCart(item)}>
         <Ionicons name="add" size={20} color="#fff" />
       </TouchableOpacity>
@@ -100,28 +104,20 @@ export default function RestaurantProfileScreen({ route, navigation }: any) {
                </View>
             ) : aiMenu ? (
               <View>
-                <Text style={styles.aiSummary}>{aiMenu.summary}</Text>
+                <Text style={styles.aiSummary}>{aiMenu.ai_cuisine_summary}</Text>
                 
-                {aiMenu.categories.Vegan.length > 0 && (
-                  <View style={styles.categoryBlock}>
-                    <Text style={styles.categoryTitle}>🌱 Vegan</Text>
-                    {aiMenu.categories.Vegan.map(renderMenuItem)}
-                  </View>
-                )}
+                <View style={styles.dietaryScores}>
+                  <Text style={styles.scoreText}>🌱 Vegan: {aiMenu.overall_dietary_rating?.vegan_friendly_score}/10</Text>
+                  <Text style={styles.scoreText}>🧀 Veg: {aiMenu.overall_dietary_rating?.vegetarian_friendly_score}/10</Text>
+                  <Text style={styles.scoreText}>🌾 GF: {aiMenu.overall_dietary_rating?.gluten_free_friendly_score}/10</Text>
+                </View>
 
-                {aiMenu.categories.Vegetarian.length > 0 && (
-                  <View style={styles.categoryBlock}>
-                    <Text style={styles.categoryTitle}>🧀 Vegetarian</Text>
-                    {aiMenu.categories.Vegetarian.map(renderMenuItem)}
+                {aiMenu.menu_categories?.map((category, idx) => (
+                  <View key={idx} style={styles.categoryBlock}>
+                    <Text style={styles.categoryTitle}>{category.category_name}</Text>
+                    {category.items.map(renderMenuItem)}
                   </View>
-                )}
-
-                {aiMenu.categories.Meat.length > 0 && (
-                  <View style={styles.categoryBlock}>
-                    <Text style={styles.categoryTitle}>🥩 Meat</Text>
-                    {aiMenu.categories.Meat.map(renderMenuItem)}
-                  </View>
-                )}
+                ))}
 
                 <TouchableOpacity 
                   style={styles.chatButton}
@@ -302,7 +298,61 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  menuItemName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  menuItemDescription: {
+    fontSize: 14,
+    color: '#64748b',
+    lineHeight: 20,
     marginBottom: 8,
+  },
+  badgeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  badge: {
+    backgroundColor: '#dcfce7',
+    color: '#166534',
+    fontSize: 10,
+    fontWeight: '700',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  allergenBadge: {
+    backgroundColor: '#fee2e2',
+    color: '#991b1b',
+    fontSize: 10,
+    fontWeight: '700',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  dietaryScores: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#f8fafc',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  scoreText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#334155',
   },
   addButton: {
     backgroundColor: '#1a1a1a',
