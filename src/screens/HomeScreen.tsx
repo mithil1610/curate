@@ -1,39 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, ScrollView, Modal, Switch } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, ScrollView, Modal, Switch, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import RestaurantCard from '../components/RestaurantCard';
-
-const MOCK_DATA = [
-  {
-    id: '1',
-    name: 'Le Bernardin',
-    rating: 4.9,
-    tags: ['French', 'Seafood', 'Fine Dining'],
-    imageUrl: 'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?q=80&w=800&auto=format&fit=crop',
-  },
-  {
-    id: '2',
-    name: 'Osteria Francescana',
-    rating: 4.8,
-    tags: ['Italian', 'Contemporary', 'Vegetarian Options'],
-    imageUrl: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=800&auto=format&fit=crop',
-  },
-  {
-    id: '3',
-    name: 'Gaggan Anand',
-    rating: 4.7,
-    tags: ['Indian', 'Progressive', 'Gluten-Free Options'],
-    imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=800&auto=format&fit=crop',
-  },
-];
+import { fetchNearbyRestaurants, Place } from '../services/placesApi';
+import { getUserPreferences } from '../services/userService';
+import { sortRestaurantsByRelevance } from '../utils/sorting';
 
 const PILL_OPTIONS = ['All', 'Vegetarian Options', 'Vegan Options'];
 
 export default function HomeScreen({ navigation }: any) {
-  const [location, setLocation] = useState<Location.LocationObject | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [restaurants, setRestaurants] = useState<Place[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const [activePill, setActivePill] = useState('All');
   const [isFilterVisible, setFilterVisible] = useState(false);
@@ -44,14 +23,36 @@ export default function HomeScreen({ navigation }: any) {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setErrorMsg('Permission to access location was denied');
+        setLoading(false);
         return;
       }
 
       let location = await Location.getCurrentPositionAsync({});
-      setLocation(location);
+      
+      // Fetch data and preferences in parallel
+      const [places, prefs] = await Promise.all([
+        fetchNearbyRestaurants(location.coords.latitude, location.coords.longitude),
+        getUserPreferences()
+      ]);
+
+      const sorted = sortRestaurantsByRelevance(places, prefs);
+      setRestaurants(sorted);
+      setLoading(false);
     })();
   }, []);
+
+  const getFilteredRestaurants = () => {
+    return restaurants.filter(r => {
+      const lowerTags = r.tags.map(t => t.toLowerCase());
+      if (strictVegan && !lowerTags.includes('vegan')) return false;
+      if (strictVeg && !lowerTags.includes('vegetarian') && !lowerTags.includes('vegan')) return false;
+      
+      if (activePill === 'Vegan Options' && !lowerTags.includes('vegan options') && !lowerTags.includes('vegan')) return false;
+      if (activePill === 'Vegetarian Options' && !lowerTags.includes('vegetarian options') && !lowerTags.includes('vegetarian')) return false;
+      
+      return true;
+    });
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -89,21 +90,34 @@ export default function HomeScreen({ navigation }: any) {
       </View>
 
       {/* Feed */}
-      <FlatList
-        data={MOCK_DATA}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.feed}
-        renderItem={({ item }) => (
-          <RestaurantCard
-            name={item.name}
-            rating={item.rating}
-            tags={item.tags}
-            imageUrl={item.imageUrl}
-            onPress={() => navigation.navigate('RestaurantProfile', item)}
-          />
-        )}
-        showsVerticalScrollIndicator={false}
-      />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1a1a1a" />
+          <Text style={styles.loadingText}>Curating nearby restaurants...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={getFilteredRestaurants()}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.feed}
+          renderItem={({ item }) => (
+            <RestaurantCard
+              name={item.name}
+              rating={item.rating}
+              tags={item.tags}
+              imageUrl={item.imageUrl}
+              onPress={() => {
+                // Background logging
+                const { logRestaurantClick } = require('../services/userService');
+                logRestaurantClick(item.tags);
+                
+                navigation.navigate('RestaurantProfile', item);
+              }}
+            />
+          )}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
       {/* Filter Modal */}
       <Modal visible={isFilterVisible} animationType="slide" transparent={true} onRequestClose={() => setFilterVisible(false)}>
@@ -211,6 +225,17 @@ const styles = StyleSheet.create({
   feed: {
     paddingHorizontal: 20,
     paddingBottom: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
   },
   modalOverlay: {
     flex: 1,
