@@ -191,14 +191,46 @@ Rules:
     parts: [{ text: newQuery }]
   });
 
+  const tools = [{
+    functionDeclarations: [
+      {
+        name: 'addToCart',
+        description: 'Adds an item from the menu to the user\'s shopping cart.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            itemName: {
+              type: 'STRING',
+              description: 'The exact name of the item as it appears on the menu.'
+            },
+            quantity: {
+              type: 'INTEGER',
+              description: 'The number of this item to add to the cart. Defaults to 1.'
+            }
+          },
+          required: ['itemName', 'quantity']
+        }
+      }
+    ]
+  }];
+
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: contents,
       config: {
         systemInstruction: systemInstruction,
+        tools: tools as any
       }
     });
+
+    if (response.functionCalls && response.functionCalls.length > 0) {
+      const call = response.functionCalls[0];
+      if (call.name === 'addToCart') {
+        const { itemName, quantity } = call.args as any;
+        return `__TOOL_CALL__:addToCart:${itemName}:${quantity}`;
+      }
+    }
 
     if (response.text) {
       return response.text;

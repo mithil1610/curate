@@ -3,9 +3,11 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, Keyboard
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ChatMessage, chatWithMenuConcierge } from '../services/menuService';
+import { useCart } from '../context/CartContext';
 
 export default function MenuChatScreen({ route, navigation }: any) {
-  const { menu, restaurantName } = route.params;
+  const { menu, restaurantName, restaurantId } = route.params;
+  const { addToCart } = useCart();
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -30,7 +32,26 @@ export default function MenuChatScreen({ route, navigation }: any) {
     // Call AI
     const reply = await chatWithMenuConcierge(restaurantName, menu, messages, userText);
     
-    setMessages([...newMessages, { role: 'model', text: reply }]);
+    if (reply.startsWith('__TOOL_CALL__:addToCart:')) {
+      const parts = reply.split(':');
+      const itemName = parts[2];
+      const quantity = parseInt(parts[3] || '1', 10);
+      
+      // Look up price from menu or default
+      addToCart({
+        id: Math.random().toString(),
+        name: itemName,
+        price: 15.00, // Mock default
+        quantity: quantity,
+        restaurantId: restaurantId,
+      });
+
+      const successMsg = `I've added ${quantity}x ${itemName} to your cart!`;
+      setMessages([...newMessages, { role: 'model', text: successMsg }]);
+    } else {
+      setMessages([...newMessages, { role: 'model', text: reply }]);
+    }
+    
     setIsTyping(false);
   };
 

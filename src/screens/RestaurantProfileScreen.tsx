@@ -3,12 +3,14 @@ import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIn
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { getOrFetchMenu, ProcessedMenu } from '../services/menuService';
+import { useCart } from '../context/CartContext';
 
 export default function RestaurantProfileScreen({ route, navigation }: any) {
   const { id, name, rating, tags, imageUrl } = route.params;
 
   const [aiMenu, setAiMenu] = useState<ProcessedMenu | null>(null);
   const [loadingAi, setLoadingAi] = useState(true);
+  const { items, addToCart, totalPrice } = useCart();
 
   useEffect(() => {
     (async () => {
@@ -17,6 +19,31 @@ export default function RestaurantProfileScreen({ route, navigation }: any) {
       setLoadingAi(false);
     })();
   }, [id, name, tags]);
+
+  const handleAddToCart = (itemString: string) => {
+    // Attempt to extract price if it exists in the string (e.g. "Burger - $15")
+    const priceMatch = itemString.match(/\$(\d+(\.\d{1,2})?)/);
+    const price = priceMatch ? parseFloat(priceMatch[1]) : 15.00; // Default $15
+    // Clean name
+    const cleanName = itemString.split('- $')[0].trim().replace(/^•\s*/, '');
+
+    addToCart({
+      id: Math.random().toString(),
+      name: cleanName,
+      price: price,
+      quantity: 1,
+      restaurantId: id,
+    });
+  };
+
+  const renderMenuItem = (item: string, i: number) => (
+    <View key={i} style={styles.menuItemRow}>
+      <Text style={styles.categoryItem}>• {item}</Text>
+      <TouchableOpacity style={styles.addButton} onPress={() => handleAddToCart(item)}>
+        <Ionicons name="add" size={20} color="#fff" />
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -69,27 +96,27 @@ export default function RestaurantProfileScreen({ route, navigation }: any) {
                 {aiMenu.categories.Vegan.length > 0 && (
                   <View style={styles.categoryBlock}>
                     <Text style={styles.categoryTitle}>🌱 Vegan</Text>
-                    {aiMenu.categories.Vegan.map((item, i) => <Text key={i} style={styles.categoryItem}>• {item}</Text>)}
+                    {aiMenu.categories.Vegan.map(renderMenuItem)}
                   </View>
                 )}
 
                 {aiMenu.categories.Vegetarian.length > 0 && (
                   <View style={styles.categoryBlock}>
                     <Text style={styles.categoryTitle}>🧀 Vegetarian</Text>
-                    {aiMenu.categories.Vegetarian.map((item, i) => <Text key={i} style={styles.categoryItem}>• {item}</Text>)}
+                    {aiMenu.categories.Vegetarian.map(renderMenuItem)}
                   </View>
                 )}
 
                 {aiMenu.categories.Meat.length > 0 && (
                   <View style={styles.categoryBlock}>
                     <Text style={styles.categoryTitle}>🥩 Meat</Text>
-                    {aiMenu.categories.Meat.map((item, i) => <Text key={i} style={styles.categoryItem}>• {item}</Text>)}
+                    {aiMenu.categories.Meat.map(renderMenuItem)}
                   </View>
                 )}
 
                 <TouchableOpacity 
                   style={styles.chatButton}
-                  onPress={() => navigation.navigate('MenuChat', { menu: aiMenu, restaurantName: name })}
+                  onPress={() => navigation.navigate('MenuChat', { menu: aiMenu, restaurantName: name, restaurantId: id })}
                 >
                   <Text style={styles.chatButtonText}>Ask Curate</Text>
                   <Ionicons name="chatbubbles" size={16} color="#1a1a1a" />
@@ -102,17 +129,25 @@ export default function RestaurantProfileScreen({ route, navigation }: any) {
             )}
           </View>
           
-          {/* Spacer to allow scrolling past the fixed Order Now button */}
           <View style={{ height: 100 }} />
         </View>
       </ScrollView>
 
-      {/* Fixed Order Now Button */}
-      <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
-        <TouchableOpacity style={styles.orderButton}>
-          <Text style={styles.orderButtonText}>Order Now</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+      {/* Floating Cart Button */}
+      {items.length > 0 && (
+        <SafeAreaView edges={['bottom']} style={styles.floatingCartContainer}>
+          <TouchableOpacity 
+            style={styles.floatingCartBtn}
+            onPress={() => navigation.navigate('Checkout')}
+          >
+            <View style={styles.cartCountBadge}>
+              <Text style={styles.cartCountText}>{items.reduce((s, i) => s + i.quantity, 0)}</Text>
+            </View>
+            <Text style={styles.floatingCartText}>View Cart</Text>
+            <Text style={styles.floatingCartPrice}>${totalPrice.toFixed(2)}</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      )}
     </View>
   );
 }
@@ -239,24 +274,58 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
     marginRight: 6,
   },
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderColor: '#e2e8f0',
+  menuItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  orderButton: {
+  addButton: {
     backgroundColor: '#1a1a1a',
     borderRadius: 12,
-    paddingVertical: 16,
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  orderButtonText: {
+  floatingCartContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+  },
+  floatingCartBtn: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  cartCountBadge: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  cartCountText: {
+    color: '#1a1a1a',
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  floatingCartText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    flex: 1,
+  },
+  floatingCartPrice: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',

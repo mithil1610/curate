@@ -8,9 +8,11 @@ import HomeScreen from './src/screens/HomeScreen';
 import SearchScreen from './src/screens/SearchScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import RestaurantProfileScreen from './src/screens/RestaurantProfileScreen';
-
 import MenuChatScreen from './src/screens/MenuChatScreen';
+import CheckoutScreen from './src/screens/CheckoutScreen';
+import OrderConfirmationScreen from './src/screens/OrderConfirmationScreen';
 import { ProcessedMenu } from './src/services/menuService';
+import { CartProvider } from './src/context/CartContext';
 
 export type RootTabParamList = {
   Home: undefined;
@@ -33,6 +35,12 @@ export type HomeStackParamList = {
   MenuChat: {
     menu: ProcessedMenu;
     restaurantName: string;
+    restaurantId: string;
+  };
+  Checkout: undefined;
+  OrderConfirmation: {
+    orderId: string;
+    prepTime: string;
   };
 };
 
@@ -42,47 +50,50 @@ function HomeStackScreen() {
       <HomeStack.Screen name="HomeFeed" component={HomeScreen} />
       <HomeStack.Screen name="RestaurantProfile" component={RestaurantProfileScreen} />
       <HomeStack.Screen name="MenuChat" component={MenuChatScreen} />
+      <HomeStack.Screen name="Checkout" component={CheckoutScreen} />
+      <HomeStack.Screen name="OrderConfirmation" component={OrderConfirmationScreen} />
     </HomeStack.Navigator>
+  );
+}
+
+function TabNavigator() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: keyof typeof Ionicons.glyphMap = 'home';
+          if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
+          else if (route.name === 'Search') iconName = focused ? 'search' : 'search-outline';
+          else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#1a1a1a',
+        tabBarInactiveTintColor: '#888',
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: '#fff',
+          borderTopWidth: 1,
+          borderTopColor: '#f0f0f0',
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeStackScreen} />
+      <Tab.Screen name="Search" component={SearchScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
+    </Tab.Navigator>
   );
 }
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        <Tab.Navigator
-          screenOptions={({ route }) => ({
-            tabBarIcon: ({ focused, color, size }) => {
-              let iconName: React.ComponentProps<typeof Ionicons>['name'] = 'home';
-
-              if (route.name === 'Home') {
-                iconName = focused ? 'home' : 'home-outline';
-              } else if (route.name === 'Search') {
-                iconName = focused ? 'search' : 'search-outline';
-              } else if (route.name === 'Profile') {
-                iconName = focused ? 'person' : 'person-outline';
-              }
-
-              return <Ionicons name={iconName} size={size} color={color} />;
-            },
-            tabBarActiveTintColor: '#000',
-            tabBarInactiveTintColor: '#888',
-            tabBarStyle: {
-              backgroundColor: '#fff',
-              borderTopWidth: 0,
-              elevation: 10,
-              shadowColor: '#000',
-              shadowOpacity: 0.1,
-              shadowRadius: 10,
-            },
-            headerShown: false,
-          })}
-        >
-          <Tab.Screen name="Home" component={HomeStackScreen} />
-          <Tab.Screen name="Search" component={SearchScreen} />
-          <Tab.Screen name="Profile" component={ProfileScreen} />
-        </Tab.Navigator>
-      </NavigationContainer>
+      <CartProvider>
+        <NavigationContainer>
+          <TabNavigator />
+        </NavigationContainer>
+      </CartProvider>
     </SafeAreaProvider>
   );
 }
