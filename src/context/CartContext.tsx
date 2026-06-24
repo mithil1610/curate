@@ -6,6 +6,7 @@ export interface CartItem {
   price: number;
   quantity: number;
   restaurantId: string;
+  restaurantUrl?: string;
   customization?: {
     removable_ingredients: string[];
     protein_add_ons: string[];
@@ -19,6 +20,7 @@ interface CartContextType {
   clearCart: () => void;
   totalPrice: number;
   restaurantId: string | null;
+  restaurantUrl: string | null;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -51,9 +53,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const totalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const restaurantId = items.length > 0 ? items[0].restaurantId : null;
+  const restaurantUrl = items.length > 0 ? (items[0].restaurantUrl || null) : null;
 
   return (
-    <CartContext.Provider value={{ items, addToCart, removeFromCart, clearCart, totalPrice, restaurantId }}>
+    <CartContext.Provider value={{ items, addToCart, removeFromCart, clearCart, totalPrice, restaurantId, restaurantUrl }}>
       {children}
     </CartContext.Provider>
   );

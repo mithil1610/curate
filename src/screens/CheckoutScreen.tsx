@@ -1,33 +1,47 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '../context/CartContext';
-import { submitOrderToToast } from '../services/toastApiService';
+import * as Clipboard from 'expo-clipboard';
 
 export default function CheckoutScreen({ navigation }: any) {
-  const { items, totalPrice, clearCart, restaurantId, removeFromCart } = useCart();
+  const { items, totalPrice, clearCart, restaurantId, restaurantUrl, removeFromCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
 
   const tax = totalPrice * 0.08;
   const deliveryFee = 4.99;
   const finalTotal = totalPrice + tax + deliveryFee;
 
-  const handlePlaceOrder = async () => {
-    setIsProcessing(true);
-    try {
-      const response = await submitOrderToToast(restaurantId || '', items);
-      if (response.success) {
-        clearCart();
-        navigation.replace('OrderConfirmation', { 
-          orderId: response.orderId, 
-          prepTime: response.estimatedPrepTime 
-        });
+  // Generate the AI-like order summary snippet
+  const orderSummarySnippet = "Awesome! I've prepared your order:\n" + items.map(item => {
+    let line = `- ${item.quantity}x ${item.name}`;
+    const mods: string[] = [];
+    if (item.customization) {
+      item.customization.removable_ingredients.forEach(i => mods.push(`No ${i}`));
+      item.customization.protein_add_ons.forEach(i => mods.push(`Add ${i}`));
+    }
+    if (mods.length > 0) {
+      line += ` (${mods.join(', ')})`;
+    }
+    return line;
+  }).join('\n');
+
+  const handleCopy = async () => {
+    await Clipboard.setStringAsync(orderSummarySnippet);
+    Alert.alert("Copied!", "Order details copied to clipboard.");
+  };
+
+  const handleDeepLink = async () => {
+    if (restaurantUrl) {
+      const supported = await Linking.canOpenURL(restaurantUrl);
+      if (supported) {
+        await Linking.openURL(restaurantUrl);
+      } else {
+        Alert.alert("Error", "Cannot open the ordering link.");
       }
-    } catch (e) {
-      alert("Failed to place order. Please try again.");
-    } finally {
-      setIsProcessing(false);
+    } else {
+      Alert.alert("Error", "No ordering link available for this restaurant.");
     }
   };
 
@@ -75,19 +89,24 @@ export default function CheckoutScreen({ navigation }: any) {
           <Text style={styles.totalText}>Total</Text>
           <Text style={styles.totalText}>${finalTotal.toFixed(2)}</Text>
         </View>
+
+        <View style={styles.snippetContainer}>
+          <Text style={styles.snippetTitle}>Curate Summary</Text>
+          <Text style={styles.snippetText}>{orderSummarySnippet}</Text>
+          <TouchableOpacity style={styles.copyBtn} onPress={handleCopy}>
+            <Ionicons name="copy-outline" size={16} color="#065f46" />
+            <Text style={styles.copyBtnText}>Copy to Clipboard</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>
         <TouchableOpacity 
-          style={styles.placeOrderBtn} 
-          onPress={handlePlaceOrder}
-          disabled={isProcessing}
+          style={styles.deepLinkBtn} 
+          onPress={handleDeepLink}
         >
-          {isProcessing ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.placeOrderText}>Place Order</Text>
-          )}
+          <Text style={styles.deepLinkText}>Order via Restaurant Website</Text>
+          <Ionicons name="open-outline" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -118,12 +137,49 @@ const styles = StyleSheet.create({
   summaryText: { fontSize: 15, color: '#666' },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
   totalText: { fontSize: 20, fontWeight: '800' },
+  snippetContainer: {
+    backgroundColor: '#f8fafc',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 24,
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
+  },
+  snippetTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginBottom: 8
+  },
+  snippetText: {
+    fontSize: 14,
+    color: '#475569',
+    lineHeight: 20,
+    marginBottom: 16
+  },
+  copyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#dcfce7',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 8
+  },
+  copyBtnText: {
+    color: '#065f46',
+    fontWeight: '700',
+    fontSize: 14
+  },
   footer: { padding: 24, borderTopWidth: 1, borderTopColor: '#f0f0f0' },
-  placeOrderBtn: {
+  deepLinkBtn: {
     backgroundColor: '#1a1a1a',
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center'
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8
   },
-  placeOrderText: { color: '#fff', fontSize: 16, fontWeight: '700' }
+  deepLinkText: { color: '#fff', fontSize: 16, fontWeight: '700' }
 });

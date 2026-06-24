@@ -7,7 +7,7 @@ import { useCart } from '../context/CartContext';
 import { useGroup } from '../context/GroupContext';
 
 export default function MenuChatScreen({ route, navigation }: any) {
-  const { menu, restaurantName, restaurantId } = route.params;
+  const { menu, restaurantName, restaurantId, orderingUrl } = route.params;
   const { addToCart } = useCart();
   const { isGroupModeActive, combinedProfile } = useGroup();
 
@@ -54,6 +54,7 @@ export default function MenuChatScreen({ route, navigation }: any) {
         price: 15.00, // Mock default
         quantity: quantity,
         restaurantId: restaurantId,
+        restaurantUrl: orderingUrl,
       });
 
       const successMsg = `I've added ${quantity}x ${itemName} to your cart!`;

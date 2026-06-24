@@ -7,7 +7,7 @@ import { useCart } from '../context/CartContext';
 import { useGroup } from '../context/GroupContext';
 
 export default function RestaurantProfileScreen({ route, navigation }: any) {
-  const { id, name, rating, tags, imageUrl } = route.params;
+  const { id, name, rating, tags, imageUrl, orderingUrl } = route.params;
 
   const [aiMenu, setAiMenu] = useState<ProcessedMenu | null>(null);
   const [loadingAi, setLoadingAi] = useState(true);
@@ -29,6 +29,7 @@ export default function RestaurantProfileScreen({ route, navigation }: any) {
       price: item.price,
       quantity: 1,
       restaurantId: id,
+      restaurantUrl: orderingUrl,
       customization: item.customization,
     });
   };
@@ -121,7 +122,7 @@ export default function RestaurantProfileScreen({ route, navigation }: any) {
 
                 <TouchableOpacity 
                   style={styles.chatButton}
-                  onPress={() => navigation.navigate('MenuChat', { menu: aiMenu, restaurantName: name, restaurantId: id })}
+                  onPress={() => navigation.navigate('MenuChat', { menu: aiMenu, restaurantName: name, restaurantId: id, orderingUrl })}
                 >
                   <Text style={styles.chatButtonText}>Ask Curate</Text>
                   <Ionicons name="chatbubbles" size={16} color="#1a1a1a" />

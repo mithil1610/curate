@@ -6,6 +6,7 @@ export type Place = {
   rating: number;
   tags: string[];
   imageUrl: string;
+  orderingUrl: string;
 };
 
 export async function fetchNearbyRestaurants(lat: number, lng: number): Promise<Place[]> {
@@ -32,6 +33,7 @@ export async function fetchNearbyRestaurants(lat: number, lng: number): Promise<
       imageUrl: result.photos && result.photos.length > 0
         ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${result.photos[0].photo_reference}&key=${API_KEY}`
         : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=800&auto=format&fit=crop',
+      orderingUrl: 'https://toasttab.com/mock-restaurant' // Fallback or mock ordering URL
     }));
   } catch (error) {
     console.error('Fetch error:', error);
@@ -47,6 +49,7 @@ function getMockData(): Place[] {
       rating: 4.9,
       tags: ['french', 'seafood', 'fine dining'],
       imageUrl: 'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?q=80&w=800&auto=format&fit=crop',
+      orderingUrl: 'https://toasttab.com/le-bernardin',
     },
     {
       id: '2',
@@ -54,6 +57,7 @@ function getMockData(): Place[] {
       rating: 4.8,
       tags: ['italian', 'contemporary', 'vegetarian options'],
       imageUrl: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=800&auto=format&fit=crop',
+      orderingUrl: 'https://toasttab.com/osteria-francescana',
     },
     {
       id: '3',
@@ -61,6 +65,7 @@ function getMockData(): Place[] {
       rating: 4.7,
       tags: ['indian', 'progressive', 'gluten-free options'],
       imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=800&auto=format&fit=crop',
+      orderingUrl: 'https://toasttab.com/gaggan-anand',
     },
     {
       id: '4',
@@ -68,6 +73,7 @@ function getMockData(): Place[] {
       rating: 4.6,
       tags: ['nordic', 'foraged', 'organic'],
       imageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=800&auto=format&fit=crop',
+      orderingUrl: 'https://toasttab.com/noma',
     }
   ];
 }
