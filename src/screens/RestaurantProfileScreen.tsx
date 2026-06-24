@@ -1,10 +1,22 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { getOrFetchMenu, ProcessedMenu } from '../services/menuService';
 
 export default function RestaurantProfileScreen({ route, navigation }: any) {
-  const { name, rating, tags, imageUrl } = route.params;
+  const { id, name, rating, tags, imageUrl } = route.params;
+
+  const [aiMenu, setAiMenu] = useState<ProcessedMenu | null>(null);
+  const [loadingAi, setLoadingAi] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const menu = await getOrFetchMenu(id, name, tags);
+      setAiMenu(menu);
+      setLoadingAi(false);
+    })();
+  }, [id, name, tags]);
 
   return (
     <View style={styles.container}>
@@ -38,24 +50,48 @@ export default function RestaurantProfileScreen({ route, navigation }: any) {
             ))}
           </View>
 
-          {/* Description / Additional Info */}
-          <Text style={styles.description}>
-            Experience exquisite culinary creations in an elegant atmosphere. Our menu features locally sourced ingredients prepared with modern techniques.
-          </Text>
-
-          {/* Chat with Menu Section */}
+          {/* AI Menu Section */}
           <View style={styles.chatSection}>
             <View style={styles.chatHeader}>
-              <Ionicons name="chatbubbles" size={24} color="#1a1a1a" />
-              <Text style={styles.chatTitle}>Chat with Menu</Text>
+              <Ionicons name="sparkles" size={22} color="#1a1a1a" />
+              <Text style={styles.chatTitle}>AI Menu Concierge</Text>
             </View>
-            <Text style={styles.chatSubtitle}>
-              Ask our AI concierge for recommendations, dietary concerns, or wine pairings.
-            </Text>
-            <TouchableOpacity style={styles.chatButton}>
-              <Text style={styles.chatButtonText}>Start Chat</Text>
-              <Ionicons name="arrow-forward" size={16} color="#1a1a1a" />
-            </TouchableOpacity>
+            
+            {loadingAi ? (
+               <View style={styles.aiLoading}>
+                 <ActivityIndicator size="small" color="#1a1a1a" />
+                 <Text style={styles.aiLoadingText}>Curating menu insights...</Text>
+               </View>
+            ) : aiMenu ? (
+              <View>
+                <Text style={styles.aiSummary}>{aiMenu.summary}</Text>
+                
+                {aiMenu.categories.Vegan.length > 0 && (
+                  <View style={styles.categoryBlock}>
+                    <Text style={styles.categoryTitle}>🌱 Vegan</Text>
+                    {aiMenu.categories.Vegan.map((item, i) => <Text key={i} style={styles.categoryItem}>• {item}</Text>)}
+                  </View>
+                )}
+
+                {aiMenu.categories.Vegetarian.length > 0 && (
+                  <View style={styles.categoryBlock}>
+                    <Text style={styles.categoryTitle}>🧀 Vegetarian</Text>
+                    {aiMenu.categories.Vegetarian.map((item, i) => <Text key={i} style={styles.categoryItem}>• {item}</Text>)}
+                  </View>
+                )}
+
+                {aiMenu.categories.Meat.length > 0 && (
+                  <View style={styles.categoryBlock}>
+                    <Text style={styles.categoryTitle}>🥩 Meat</Text>
+                    {aiMenu.categories.Meat.map((item, i) => <Text key={i} style={styles.categoryItem}>• {item}</Text>)}
+                  </View>
+                )}
+              </View>
+            ) : (
+              <Text style={styles.chatSubtitle}>
+                AI Menu could not be loaded at this time.
+              </Text>
+            )}
           </View>
           
           {/* Spacer to allow scrolling past the fixed Order Now button */}
@@ -204,17 +240,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: '#e2e8f0',
   },
   orderButton: {
     backgroundColor: '#1a1a1a',
-    borderRadius: 16,
-    paddingVertical: 18,
+    borderRadius: 12,
+    paddingVertical: 16,
     alignItems: 'center',
   },
   orderButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
+  aiSummary: {
+    fontSize: 15,
+    color: '#334155',
+    lineHeight: 22,
+    marginBottom: 16,
+    fontStyle: 'italic'
+  },
+  categoryBlock: {
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 12,
+  },
+  categoryTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 8,
+  },
+  categoryItem: {
+    fontSize: 14,
+    color: '#475569',
+    marginBottom: 4,
+  },
+  aiLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  aiLoadingText: {
+    marginLeft: 12,
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+  }
 });
