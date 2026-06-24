@@ -13,12 +13,15 @@ import CheckoutScreen from './src/screens/CheckoutScreen';
 import OrderConfirmationScreen from './src/screens/OrderConfirmationScreen';
 import { ProcessedMenu } from './src/services/menuService';
 import { CartProvider } from './src/context/CartContext';
+import { GroupProvider } from './src/context/GroupContext';
 
 import TasteProfileScreen from './src/screens/TasteProfileScreen';
+import GroupSyncScreen from './src/screens/GroupSyncScreen';
 
 export type RootTabParamList = {
   Home: undefined;
   Search: undefined;
+  GroupSync: undefined;
   Profile: undefined;
 };
 
@@ -76,6 +79,7 @@ function TabNavigator() {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
           if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'Search') iconName = focused ? 'search' : 'search-outline';
+          else if (route.name === 'GroupSync') iconName = focused ? 'people' : 'people-outline';
           else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -93,6 +97,7 @@ function TabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeStackScreen} />
       <Tab.Screen name="Search" component={SearchScreen} />
+      <Tab.Screen name="GroupSync" component={GroupSyncScreen} options={{ title: 'Group' }} />
       <Tab.Screen name="Profile" component={ProfileStackScreen} />
     </Tab.Navigator>
   );
@@ -101,11 +106,13 @@ function TabNavigator() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <CartProvider>
-        <NavigationContainer>
-          <TabNavigator />
-        </NavigationContainer>
-      </CartProvider>
+      <GroupProvider>
+        <CartProvider>
+          <NavigationContainer>
+            <TabNavigator />
+          </NavigationContainer>
+        </CartProvider>
+      </GroupProvider>
     </SafeAreaProvider>
   );
 }

@@ -4,15 +4,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ChatMessage, chatWithMenuConcierge } from '../services/menuService';
 import { useCart } from '../context/CartContext';
+import { useGroup } from '../context/GroupContext';
 
 export default function MenuChatScreen({ route, navigation }: any) {
   const { menu, restaurantName, restaurantId } = route.params;
   const { addToCart } = useCart();
+  const { isGroupModeActive, combinedProfile } = useGroup();
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'model',
-      text: `Welcome to ${restaurantName}! I'm Curate, your personal AI concierge. I've reviewed the menu—what are you in the mood for today?`
+      text: isGroupModeActive 
+        ? `Welcome to ${restaurantName}! I'm Curate, your personal AI concierge. I see you're dining as a group. I've reviewed the menu and your combined preferences—what are you both in the mood for today?`
+        : `Welcome to ${restaurantName}! I'm Curate, your personal AI concierge. I've reviewed the menu—what are you in the mood for today?`
     }
   ]);
   const [inputText, setInputText] = useState('');
@@ -30,7 +34,13 @@ export default function MenuChatScreen({ route, navigation }: any) {
     setIsTyping(true);
 
     // Call AI
-    const reply = await chatWithMenuConcierge(restaurantName, menu, messages, userText);
+    const reply = await chatWithMenuConcierge(
+      restaurantName, 
+      menu, 
+      messages, 
+      userText,
+      isGroupModeActive ? combinedProfile : null
+    );
     
     if (reply.startsWith('__TOOL_CALL__:addToCart:')) {
       const parts = reply.split(':');

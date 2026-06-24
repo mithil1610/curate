@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { getOrFetchMenu, ProcessedMenu } from '../services/menuService';
 import { useCart } from '../context/CartContext';
+import { useGroup } from '../context/GroupContext';
 
 export default function RestaurantProfileScreen({ route, navigation }: any) {
   const { id, name, rating, tags, imageUrl } = route.params;
@@ -11,6 +12,7 @@ export default function RestaurantProfileScreen({ route, navigation }: any) {
   const [aiMenu, setAiMenu] = useState<ProcessedMenu | null>(null);
   const [loadingAi, setLoadingAi] = useState(true);
   const { items, addToCart, totalPrice } = useCart();
+  const { isGroupModeActive } = useGroup();
 
   useEffect(() => {
     (async () => {
@@ -83,6 +85,13 @@ export default function RestaurantProfileScreen({ route, navigation }: any) {
               <Ionicons name="sparkles" size={22} color="#1a1a1a" />
               <Text style={styles.chatTitle}>AI Menu Concierge</Text>
             </View>
+            
+            {isGroupModeActive && (
+              <View style={styles.groupBannerInline}>
+                <Ionicons name="people" size={14} color="#065f46" />
+                <Text style={styles.groupBannerTextInline}>Group Sync Active</Text>
+              </View>
+            )}
             
             {loadingAi ? (
                <View style={styles.aiLoading}>
@@ -235,22 +244,37 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   chatSection: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    marginTop: 32,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
   },
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
   },
   chatTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#1a1a1a',
     marginLeft: 8,
+  },
+  groupBannerInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#d1fae5',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignSelf: 'flex-start'
+  },
+  groupBannerTextInline: {
+    marginLeft: 6,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#065f46',
   },
   chatSubtitle: {
     fontSize: 14,

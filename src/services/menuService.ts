@@ -1,7 +1,7 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import { GoogleGenAI } from '@google/genai';
-import { getTasteProfile } from './userService';
+import { getTasteProfile, TasteProfile } from './userService';
 
 export interface ProcessedMenu {
   summary: string;
@@ -162,7 +162,8 @@ export async function chatWithMenuConcierge(
   restaurantName: string,
   menu: ProcessedMenu,
   history: ChatMessage[],
-  newQuery: string
+  newQuery: string,
+  groupProfile?: TasteProfile | null
 ): Promise<string> {
   const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
   if (!apiKey) {
@@ -171,11 +172,22 @@ export async function chatWithMenuConcierge(
 
   const ai = new GoogleGenAI({ apiKey });
 
-  // Fetch the user's taste profile
-  const profile = await getTasteProfile();
+  // Use group profile if provided, else fetch individual profile
+  const profile = groupProfile || await getTasteProfile();
   let profileContext = "";
   if (profile) {
-    profileContext = `
+    if (groupProfile) {
+      profileContext = `
+Group Mode is ACTIVE. You are recommending food for TWO people.
+The users have the following COMBINED Deep Taste Profile:
+- Dietary Baseline: ${profile.dietaryBaseline || 'None'}
+- Strict Allergies: ${profile.allergies.length > 0 ? profile.allergies.join(', ') : 'None'}
+- Personal Tastes: ${profile.personalTastes || 'None specified'}
+
+CRITICAL INSTRUCTION: You MUST strictly warn the users against any menu items that violate their COMBINED allergies. You must recommend shared appetizers and distinct meals that perfectly satisfy BOTH users' tastes based on this Combined Profile.
+`;
+    } else {
+      profileContext = `
 The user has the following Deep Taste Profile:
 - Dietary Baseline: ${profile.dietaryBaseline || 'None'}
 - Strict Allergies: ${profile.allergies.length > 0 ? profile.allergies.join(', ') : 'None'}
@@ -183,6 +195,7 @@ The user has the following Deep Taste Profile:
 
 CRITICAL INSTRUCTION: You MUST strictly warn the user against any menu items that violate their allergies. If they ask for recommendations, filter out items that don't match their Dietary Baseline or Allergies. Tailor your recommendations to their Personal Tastes.
 `;
+    }
   }
 
   const systemInstruction = `

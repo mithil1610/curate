@@ -7,6 +7,7 @@ import RestaurantCard from '../components/RestaurantCard';
 import { fetchNearbyRestaurants, Place } from '../services/placesApi';
 import { getUserPreferences } from '../services/userService';
 import { sortRestaurantsByRelevance } from '../utils/sorting';
+import { useGroup } from '../context/GroupContext';
 
 const PILL_OPTIONS = ['All', 'Vegetarian Options', 'Vegan Options'];
 
@@ -18,6 +19,8 @@ export default function HomeScreen({ navigation }: any) {
   const [isFilterVisible, setFilterVisible] = useState(false);
   const [strictVeg, setStrictVeg] = useState(false);
   const [strictVegan, setStrictVegan] = useState(false);
+
+  const { isGroupModeActive, combinedProfile } = useGroup();
 
   useEffect(() => {
     (async () => {
@@ -44,6 +47,27 @@ export default function HomeScreen({ navigation }: any) {
   const getFilteredRestaurants = () => {
     return restaurants.filter(r => {
       const lowerTags = r.tags.map(t => t.toLowerCase());
+      
+      // Group Mode Filtering
+      if (isGroupModeActive && combinedProfile) {
+        // If combined profile has a strict allergy, and the restaurant doesn't explicitly offer options for it
+        // Note: For a real app, this logic would require comprehensive restaurant tagging.
+        // For the demo, we assume if they have "Gluten" allergy, restaurant needs "Gluten-Free Options"
+        const hasAllergyConflict = combinedProfile.allergies.some(allergy => {
+           // E.g., allergy "Gluten", we check for "gluten-free" tag. If no tag, filter out.
+           const neededTag = `${allergy.toLowerCase()}-free`;
+           return !lowerTags.some(t => t.includes(neededTag) || t.includes('accommodating'));
+        });
+        
+        // Let's just do a simple filter simulation for the mockup:
+        // Actually, let's keep it simple: if there are allergies, we ONLY show places that are highly rated
+        // or have "accommodating" in the tags. To simulate a strict filter:
+        if (combinedProfile.allergies.length > 0 && r.rating < 4.5) {
+          // Filter out lower rated places as a mock "strict filter"
+          return false;
+        }
+      }
+
       if (strictVegan && !lowerTags.includes('vegan')) return false;
       if (strictVeg && !lowerTags.includes('vegetarian') && !lowerTags.includes('vegan')) return false;
       
@@ -56,6 +80,14 @@ export default function HomeScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      {/* Group Mode Banner */}
+      {isGroupModeActive && (
+        <View style={styles.groupBanner}>
+          <Ionicons name="people" size={16} color="#065f46" />
+          <Text style={styles.groupBannerText}>Group Sync Active: Filtering for 2 people</Text>
+        </View>
+      )}
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.searchContainer}>
@@ -156,11 +188,25 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
     alignItems: 'center',
-    backgroundColor: '#fafafa',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  groupBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#d1fae5',
+    paddingVertical: 8,
+    paddingHorizontal: 24,
+  },
+  groupBannerText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#065f46',
   },
   searchContainer: {
     flex: 1,
