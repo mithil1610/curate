@@ -14,6 +14,8 @@ import OrderConfirmationScreen from './src/screens/OrderConfirmationScreen';
 import { ProcessedMenu } from './src/services/menuService';
 import { CartProvider } from './src/context/CartContext';
 
+import TasteProfileScreen from './src/screens/TasteProfileScreen';
+
 export type RootTabParamList = {
   Home: undefined;
   Search: undefined;
@@ -22,6 +24,7 @@ export type RootTabParamList = {
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
+const ProfileStack = createNativeStackNavigator();
 
 export type HomeStackParamList = {
   HomeFeed: undefined;
@@ -56,6 +59,15 @@ function HomeStackScreen() {
   );
 }
 
+function ProfileStackScreen() {
+  return (
+    <ProfileStack.Navigator screenOptions={{ headerShown: false, presentation: 'modal' }}>
+      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
+      <ProfileStack.Screen name="TasteProfile" component={TasteProfileScreen} />
+    </ProfileStack.Navigator>
+  );
+}
+
 function TabNavigator() {
   return (
     <Tab.Navigator
@@ -81,7 +93,7 @@ function TabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeStackScreen} />
       <Tab.Screen name="Search" component={SearchScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Profile" component={ProfileStackScreen} />
     </Tab.Navigator>
   );
 }

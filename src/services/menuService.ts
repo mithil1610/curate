@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import { GoogleGenAI } from '@google/genai';
+import { getTasteProfile } from './userService';
 
 export interface ProcessedMenu {
   summary: string;
@@ -163,20 +164,42 @@ export async function chatWithMenuConcierge(
   history: ChatMessage[],
   newQuery: string
 ): Promise<string> {
-  if (!ai) {
-    return "I'm currently operating offline and cannot answer chat queries at the moment. Please check the AI summary on the profile page.";
+  const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+  if (!apiKey) {
+    return "I'm sorry, I'm currently unavailable. (API Key missing)";
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Fetch the user's taste profile
+  const profile = await getTasteProfile();
+  let profileContext = "";
+  if (profile) {
+    profileContext = `
+The user has the following Deep Taste Profile:
+- Dietary Baseline: ${profile.dietaryBaseline || 'None'}
+- Strict Allergies: ${profile.allergies.length > 0 ? profile.allergies.join(', ') : 'None'}
+- Personal Tastes: ${profile.personalTastes || 'None specified'}
+
+CRITICAL INSTRUCTION: You MUST strictly warn the user against any menu items that violate their allergies. If they ask for recommendations, filter out items that don't match their Dietary Baseline or Allergies. Tailor your recommendations to their Personal Tastes.
+`;
   }
 
   const systemInstruction = `
-You are 'Curate', a sophisticated, polite, and helpful culinary concierge.
-You are currently assisting a user with the menu for ${restaurantName}.
-Here is the structured menu data you must use as your sole source of truth for menu items:
+You are Curate, an elegant, highly sophisticated culinary concierge.
+You are currently assisting a user at the restaurant: ${restaurantName}.
+Here is the AI-processed menu for this restaurant in JSON format:
 ${JSON.stringify(menu, null, 2)}
 
-Rules:
-1. Only recommend or discuss items that are explicitly listed in the menu data above.
-2. If the user asks about an item not on the menu, politely inform them it isn't available and suggest an alternative from the menu.
-3. Keep your answers concise, conversational, and native to a high-end mobile app experience. Do not use markdown blocks unless formatting a list.
+${profileContext}
+
+Your persona:
+- You are knowledgeable about food, wine, and culinary techniques.
+- You speak clearly, concisely, and with a touch of high-end hospitality (e.g., "Certainly," "I highly recommend," "An excellent choice").
+- You strictly rely on the provided menu JSON. Do not invent dishes that are not on the menu.
+- Answer user questions based ONLY on the menu context provided.
+- If a user asks for a recommendation, consider their dietary restrictions if they mentioned any, and reference the categories provided in the JSON.
+- If you use the addToCart tool, confirm the addition naturally in your response, but keep it brief.
 `;
 
   // Format history for Gemini API

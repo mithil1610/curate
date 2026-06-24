@@ -1,4 +1,5 @@
 import { CartItem } from "../context/CartContext";
+import { getTasteProfile } from "./userService";
 
 export interface ToastOrderPayload {
   restaurantGuid: string;
@@ -10,6 +11,9 @@ export interface ToastOrderPayload {
       };
       quantity: number;
       price: number;
+      modifiers?: {
+        name: string;
+      }[];
     }[];
   }[];
 }
@@ -25,6 +29,20 @@ export async function submitOrderToToast(
   restaurantId: string, 
   items: CartItem[]
 ): Promise<ToastOrderResponse> {
+  const profile = await getTasteProfile();
+  
+  const globalModifiers: { name: string }[] = [];
+  if (profile) {
+    if (profile.allergies && profile.allergies.length > 0) {
+      profile.allergies.forEach(allergy => {
+        globalModifiers.push({ name: `ALLERGY: ${allergy}` });
+      });
+    }
+    if (profile.personalTastes) {
+      globalModifiers.push({ name: `PREF: ${profile.personalTastes}` });
+    }
+  }
+
   // 1. Map our internal CartItem array to the Toast Orders API Payload format
   const payload: ToastOrderPayload = {
     restaurantGuid: restaurantId || 'mock-restaurant-guid',
@@ -36,7 +54,8 @@ export async function submitOrderToToast(
             name: item.name
           },
           quantity: item.quantity,
-          price: item.price
+          price: item.price,
+          modifiers: globalModifiers.length > 0 ? globalModifiers : undefined
         }))
       }
     ]

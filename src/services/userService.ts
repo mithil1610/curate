@@ -52,3 +52,38 @@ export async function getUserPreferences(): Promise<Record<string, number>> {
   }
   return {};
 }
+
+export interface TasteProfile {
+  allergies: string[];
+  dietaryBaseline: string;
+  personalTastes: string;
+}
+
+export async function getTasteProfile(): Promise<TasteProfile | null> {
+  const userId = await getOrCreateUserId();
+  
+  try {
+    const userRef = doc(db, 'users', userId);
+    const docSnap = await getDoc(userRef);
+    
+    if (docSnap.exists() && docSnap.data().tasteProfile) {
+      return docSnap.data().tasteProfile as TasteProfile;
+    }
+  } catch (e) {
+    console.warn("Firestore error fetching taste profile:", e);
+  }
+  return null;
+}
+
+export async function saveTasteProfile(profile: TasteProfile): Promise<void> {
+  const userId = await getOrCreateUserId();
+  
+  try {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      tasteProfile: profile
+    });
+  } catch (e) {
+    console.warn("Firestore error saving taste profile:", e);
+  }
+}
