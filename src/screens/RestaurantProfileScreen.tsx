@@ -144,12 +144,12 @@ export default function RestaurantProfileScreen({ route, navigation }: any) {
         <SafeAreaView edges={['bottom']} style={styles.floatingCartContainer}>
           <TouchableOpacity 
             style={styles.floatingCartBtn}
-            onPress={() => navigation.navigate('Checkout')}
+            onPress={() => navigation.navigate('MenuChat', { menu: aiMenu, restaurantName: name, restaurantId: id, orderingUrl })}
           >
             <View style={styles.cartCountBadge}>
               <Text style={styles.cartCountText}>{items.reduce((s, i) => s + i.quantity, 0)}</Text>
             </View>
-            <Text style={styles.floatingCartText}>View Cart</Text>
+            <Text style={styles.floatingCartText}>Review Order in Chat</Text>
             <Text style={styles.floatingCartPrice}>${totalPrice.toFixed(2)}</Text>
           </TouchableOpacity>
         </SafeAreaView>

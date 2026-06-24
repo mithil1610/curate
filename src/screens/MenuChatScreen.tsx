@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator, Linking, Alert } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ChatMessage, chatWithMenuConcierge } from '../services/menuService';
@@ -8,7 +9,7 @@ import { useGroup } from '../context/GroupContext';
 
 export default function MenuChatScreen({ route, navigation }: any) {
   const { menu, restaurantName, restaurantId, orderingUrl } = route.params;
-  const { addToCart } = useCart();
+  const { items: cartItems, addToCart } = useCart();
   const { isGroupModeActive, combinedProfile } = useGroup();
 
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -58,7 +59,7 @@ export default function MenuChatScreen({ route, navigation }: any) {
       });
 
       const successMsg = `I've added ${quantity}x ${itemName} to your cart!`;
-      setMessages([...newMessages, { role: 'model', text: successMsg }]);
+      setMessages([...newMessages, { role: 'model', text: successMsg, isOrderCard: true }]);
     } else {
       setMessages([...newMessages, { role: 'model', text: reply }]);
     }
@@ -68,6 +69,60 @@ export default function MenuChatScreen({ route, navigation }: any) {
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isUser = item.role === 'user';
+    
+    if (item.isOrderCard) {
+      const orderSummarySnippet = "Awesome! I've prepared your order:\n" + cartItems.map(cartItem => {
+        let line = `- ${cartItem.quantity}x ${cartItem.name}`;
+        const mods: string[] = [];
+        if (cartItem.customization) {
+          cartItem.customization.removable_ingredients.forEach(i => mods.push(`No ${i}`));
+          cartItem.customization.protein_add_ons.forEach(i => mods.push(`Add ${i}`));
+        }
+        if (mods.length > 0) {
+          line += ` (${mods.join(', ')})`;
+        }
+        return line;
+      }).join('\n');
+
+      const handleCopy = async () => {
+        await Clipboard.setStringAsync(orderSummarySnippet);
+        Alert.alert("Copied!", "Order details copied to clipboard.");
+      };
+
+      const handleDeepLink = async () => {
+        if (orderingUrl) {
+          const supported = await Linking.canOpenURL(orderingUrl);
+          if (supported) {
+            await Linking.openURL(orderingUrl);
+          } else {
+            Alert.alert("Error", "Cannot open the ordering link.");
+          }
+        } else {
+          Alert.alert("Error", "No ordering link available for this restaurant.");
+        }
+      };
+
+      return (
+        <View style={styles.orderCardContainer}>
+          <Text style={styles.orderCardTitle}>Review My Order</Text>
+          {cartItems.map((cartItem, idx) => (
+             <View key={cartItem.item_id || idx} style={styles.orderCardItem}>
+               <Text style={styles.orderCardItemText}>{cartItem.quantity}x {cartItem.name}</Text>
+               <Text style={styles.orderCardItemPrice}>${(cartItem.price * cartItem.quantity).toFixed(2)}</Text>
+             </View>
+          ))}
+          <TouchableOpacity style={styles.copyBtn} onPress={handleCopy}>
+            <Ionicons name="copy-outline" size={16} color="#065f46" />
+            <Text style={styles.copyBtnText}>Copy Order Details</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.deepLinkBtn} onPress={handleDeepLink}>
+            <Text style={styles.deepLinkText}>Go to Restaurant Menu</Text>
+            <Ionicons name="open-outline" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
     return (
       <View style={[styles.messageRow, isUser ? styles.messageRowUser : styles.messageRowAI]}>
         {!isUser && (
@@ -268,5 +323,74 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: '#cbd5e1',
+  },
+  orderCardContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginVertical: 12,
+    marginHorizontal: 16,
+    alignSelf: 'stretch',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  orderCardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 12,
+  },
+  orderCardItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  orderCardItemText: {
+    fontSize: 15,
+    color: '#334155',
+    flex: 1,
+  },
+  orderCardItemPrice: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0f172a',
+    marginLeft: 12,
+  },
+  copyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#dcfce7',
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    gap: 8,
+  },
+  copyBtnText: {
+    color: '#065f46',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  deepLinkBtn: {
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 12,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    gap: 8,
+  },
+  deepLinkText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

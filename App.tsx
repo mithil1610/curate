@@ -9,8 +9,6 @@ import SearchScreen from './src/screens/SearchScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import RestaurantProfileScreen from './src/screens/RestaurantProfileScreen';
 import MenuChatScreen from './src/screens/MenuChatScreen';
-import CheckoutScreen from './src/screens/CheckoutScreen';
-import OrderConfirmationScreen from './src/screens/OrderConfirmationScreen';
 import { ProcessedMenu } from './src/services/menuService';
 import { CartProvider } from './src/context/CartContext';
 import { GroupProvider } from './src/context/GroupContext';
@@ -42,11 +40,7 @@ export type HomeStackParamList = {
     menu: ProcessedMenu;
     restaurantName: string;
     restaurantId: string;
-  };
-  Checkout: undefined;
-  OrderConfirmation: {
-    orderId: string;
-    prepTime: string;
+    orderingUrl: string;
   };
 };
 
@@ -56,8 +50,6 @@ function HomeStackScreen() {
       <HomeStack.Screen name="HomeFeed" component={HomeScreen} />
       <HomeStack.Screen name="RestaurantProfile" component={RestaurantProfileScreen} />
       <HomeStack.Screen name="MenuChat" component={MenuChatScreen} />
-      <HomeStack.Screen name="Checkout" component={CheckoutScreen} />
-      <HomeStack.Screen name="OrderConfirmation" component={OrderConfirmationScreen} />
     </HomeStack.Navigator>
   );
 }

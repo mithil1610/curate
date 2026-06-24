@@ -227,6 +227,7 @@ function getFallbackMenu(restaurantId: string): ProcessedMenu {
 export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
+  isOrderCard?: boolean;
 }
 
 export async function chatWithMenuConcierge(
